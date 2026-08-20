@@ -9,6 +9,10 @@ pipeline {
         )
     }
 
+    options {
+        skipDefaultCheckout(true)
+    }
+
     stages {
 
         stage("Cleanup Workspace") {
@@ -43,16 +47,25 @@ pipeline {
 
         stage("Push the changed deployment file to Git") {
             steps {
-                sh '''
-                    git config user.name "Jenkins"
-                    git config user.email "jenkins@example.com"
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'github',
+                        usernameVariable: 'GIT_USERNAME',
+                        passwordVariable: 'GIT_PASSWORD'
+                    )
+                ]) {
+                    sh '''
+                        git config user.name "Jenkins"
+                        git config user.email "jenkins@example.com"
 
-                    git add deployment.yaml
+                        git add deployment.yaml
 
-                    git commit -m "Update image tag to ${IMAGE_TAG}" || true
+                        git diff --cached --quiet || \
+                        git commit -m "Update image tag to ${IMAGE_TAG}"
 
-                    git push origin main
-                '''
+                        git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/rapurusirisha/gitops-register-app.git HEAD:main
+                    '''
+                }
             }
         }
     }
